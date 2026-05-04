@@ -232,7 +232,7 @@ def geotherm_steady(
     zc = z[z <= zm]
     zL = z[z > zm]
     
-    # Nimmo & Mackwell Eqs 2 & 3
+    # Ruiz et al 2026 Eqs 2 & 3
     Tzc = Ts + qs*zc/kc - Ac*zc*zc/2/kc # crustal part
     Tcb = Tzc[-1]
     qm = qs - Ac*zm
