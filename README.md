@@ -53,6 +53,8 @@ As a test, run the following command within the container:
 cd models && ./profile_1d
 ```
 
+This will printout 100 rows x 11 columns of a 1D composition profile along a PT path. 
+
 The paper's results can be replicated by running the following (from the **models** directory):
 
 ```bash
