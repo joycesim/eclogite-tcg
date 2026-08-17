@@ -50,7 +50,7 @@ save_output = False
 load_output = True
 
 reference = "venus_model"
-rxn_name = "claude_slb21_rx"
+rxn_name = "claude_slb21_rx" # What other reactions are available? 
 
 # only phases greater than this fraction will be plotted
 phasetol = 1.e-5 # default 1.e-2
@@ -210,13 +210,13 @@ def save_current_fig(name, *args):
 def geotherm_steady(
     z, # depth, m
     zm, # moho depth, m
-    Ac, # crustal heat production, W/m3
+    Ac, # crustal heat production, W/m3 ( 0.45 µW m−3 in Ruiz et al 2026)
     qs=None, # surface heat flow, W/m2
-    qm=None,
-    Ts=470, # K
-    Tlab=1600, # K
-    kc = 2.0, # k crust, W/m/K
-    k_m = 3.0, # k mantle, W/m/K
+    qm=None, # heat flow at base of crust, W/m2
+    Ts=470, # surface temperature, K (Ruiz et al 2026 uses 740 K)
+    Tlab=1600, # LAB temperature?, K
+    kc = 2.0, # thermal heat conductivity of crust, W/m/K ( W m−1 K−1, a standard value appropriate for basaltic rocks. Ruiz et al 2026  )
+    k_m = 3.0, # k mantle, W/m/K (km = 3 W m−1 K−1, a value appropriate for mantle rocks at temperatures of at least several hundred degrees Celsius)
 ):
     assert(qs is not None or qm is not None)
 
@@ -229,14 +229,14 @@ def geotherm_steady(
     # lithosphere thickness derives from this
     
     # depths within the crust vs. mantle
-    zc = z[z <= zm]
-    zL = z[z > zm]
+    zc = z[z <= zm] # depths within the crust
+    zL = z[z > zm] # depth within the mantle
     
-    # Nimmo & Mackwell Eqs 2 & 3
-    Tzc = Ts + qs*zc/kc - Ac*zc*zc/2/kc # crustal part
+    # # Ruiz et al 2026 Eqs 2 & 3 
+    Tzc = Ts + qs*zc/kc - Ac*zc*zc/2/kc # temperature at given depth, crustal part, eq 2 in ruiz et al 2026
     Tcb = Tzc[-1]
-    qm = qs - Ac*zm
-    TzL =  Tcb + qm*(zL-zm)/k_m
+    qm = qs - Ac*zm # Fm = Fs —HcTc is the mantle heat flow from Ruiz et al 2026
+    TzL =  Tcb + qm*(zL-zm)/k_m # temperature profile in the mantle, eq 3 in ruiz et al 2026
 
     T = np.zeros_like(z)
     T[z <= zm] = Tzc
@@ -246,6 +246,17 @@ def geotherm_steady(
     idx = np.argmax(T > Tlab)
     L = z[idx]
     return T, L, qs, qm
+
+def hirschmannsolidus(z):
+    # input should be in m
+    # Hirschmann 2000 solidus
+    #  https://doi.org/10.1029/2000GC000070
+    a = -5.104
+    b = 132.899
+    c = 1120.661
+    P = z * crustal_rho * gravity / 1e9 # Pressure in GPa
+    Tsolidus = a*P**2 + b*P + c # formula in celcius so add 273.15 for kelvin. 
+    return P, Tsolidus
 
 fig = plt.figure(figsize=(5,7))
 cmap1 = colormaps["coolwarm_r"]
@@ -354,6 +365,12 @@ for num_setting, setting in enumerate(tectonic_settings):
     geotherm_latex_table["T0"][num_setting] = T0-273.15
     geotherm_latex_table["T1"][num_setting] = T1-273.15
 
+    # Plot solidus from Hirschmann 2000 - need to add wet solidus? 
+    Ptest, Tsolidus = hirschmannsolidus(depths_sc)
+    plt.plot(Tsolidus,depths_sc/1.e3, color="gray")
+
+
+# plt.plot() # plot hirschman 2000 solidus
 plt.legend()
 ax1.set_ylabel("depth (km)")
 ax1.set_xlabel("$T$ (°C)")
