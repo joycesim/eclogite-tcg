@@ -95,6 +95,7 @@ compositions = [
     "hacker_2015_md_xenolith",
     "semprich_basalt",
     "mackwell_1998_maryland_diabase",
+    'gulcher_venus',
 ]
 
 unstable_compositions = compositions
@@ -258,6 +259,23 @@ def hirschmannsolidus(z):
     Tsolidus = a*P**2 + b*P + c # formula in celcius so add 273.15 for kelvin. 
     return P, Tsolidus
 
+# Hydrous solidus from Katz et al 2003
+def katzsolidus(z, h2o):
+    # input z should be in meters, h2o in weight fraction
+    K = 43 # °C wt%−γ
+    gamma = 0.75 # 0 < Gamma < 1 
+    P = z * crustal_rho * gravity / 1e9 # Pressure in GPa
+    X1 = 12.0 # wt% GPa−λ
+    X2 = 1.0  # wt% GPa−1
+    lam = 0.6 # no units, 0 < lambda < 1
+    Xsat = X1*P**lam + X2*P # water saturated solidus, 0< lambda <1, wt %
+    deltaTsat = K * Xsat**gamma # temperature depression of solidus at water saturation, °C
+    deltaT = K * h2o**gamma
+    # if deltaT > deltaTsat:
+    #     print("Warning: water content exceeds saturation, using saturation value")
+    #     deltaT = deltaTsat
+    return Xsat, deltaTsat, deltaT
+
 fig = plt.figure(figsize=(5,7))
 cmap1 = colormaps["coolwarm_r"]
 ax1 = plt.gca()
@@ -275,13 +293,15 @@ geotherm_latex_table = {
     "T1": np.zeros(len(tectonic_settings)),
 }
 
+depths = np.linspace(0,1)
+depths_sc = np.linspace(0,300e3,301) # 0 to 300 km
+
 for num_setting, setting in enumerate(tectonic_settings):
 
     Ac = setting["Ac"]
     qs0 = setting["qs0"]
 
-    depths = np.linspace(0,1)
-    depths_sc = np.linspace(0,300e3,301) # 0 to 300 km
+
 
     P =  depths_sc * crustal_rho * gravity / 1e5
     # initial steady-state geotherm
@@ -365,9 +385,16 @@ for num_setting, setting in enumerate(tectonic_settings):
     geotherm_latex_table["T0"][num_setting] = T0-273.15
     geotherm_latex_table["T1"][num_setting] = T1-273.15
 
-    # Plot solidus from Hirschmann 2000 - need to add wet solidus? 
-    Ptest, Tsolidus = hirschmannsolidus(depths_sc)
-    plt.plot(Tsolidus,depths_sc/1.e3, color="gray")
+# Plot solidus from Hirschmann 2000 - need to add wet solidus? 
+Ptest, Tsolidus = hirschmannsolidus(depths_sc)
+plt.plot(Tsolidus,depths_sc/1.e3,color="black", alpha=0.5, linewidth=1, label="peridotite solidus") # Hirschmann 2000 solidus
+# solidus with water content from Katz et al 2003, 10 is 0.1 wt %? Something wrong here? 
+Xsat, deltaTsat, deltaT = katzsolidus(depths_sc, 10)
+# print("Xsat = ", Xsat)
+# print("deltaTsat = ", deltaTsat)
+# print("deltaT = "  , deltaT)
+plt.plot(Tsolidus-deltaTsat,depths_sc/1.e3, color="gray", alpha=0.5, linewidth=1,label="water saturation solidus") # Katz et al 2003
+plt.plot(Tsolidus-deltaT,depths_sc/1.e3, '--',color="gray", alpha=0.5, linewidth=1,label="0.1 wt % water solidus") # Katz et al 2003
 
 
 # plt.plot() # plot hirschman 2000 solidus
